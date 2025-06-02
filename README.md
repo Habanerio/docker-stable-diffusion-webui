@@ -1,9 +1,21 @@
-# Stable Diffusion Web UI - NVIDIA 50XX Series
+# Stable Diffusion Web UI - NVIDIA 50XX Series w/ CUDA 12.8.1
+
 A browser interface based on Gradio library for Stable Diffusion.
 
-## NOTE:
+## Usage
 
-This is a modified version of the `universonic/docker-stable-diffusion-webui` image support for CUDA 12.8.1.
+```
+  docker build --no-cache -t habaner.io/stable-diffusion-webui:cuda12.8.1 -f Dockerfile .
+```
+
+If you are/were using a docker-compose file, then change the image name to `habaner.io/stable-diffusion-webui:cuda12.8.1` in your docker-compose file.
+
+
+# Original README
+
+---------------------------------------
+
+# Stable Diffusion web UI
 
 ## Usage
 
