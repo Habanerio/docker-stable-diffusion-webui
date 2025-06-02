@@ -1,24 +1,45 @@
-FROM nvidia/cuda:12.1.1-runtime-ubuntu22.04 as minimal
+FROM nvidia/cuda:12.8.1-runtime-ubuntu24.04 AS minimal
+#FROM nvidia/cuda:12.8.1-devel-ubuntu24.04 AS minimal
 
 COPY entrypoint.sh /app/entrypoint.sh
 
+# Install system dependencies including Python 3.10
 RUN apt update && \
-    apt install -y python3 python3-pip python3-venv git wget libgl1-mesa-dev libglib2.0-0 libsm6 libxrender1 libxext6 libgoogle-perftools4 libtcmalloc-minimal4 libcusparse11 xdg-utils bc aria2 && \
+    apt install -y software-properties-common && \
+    add-apt-repository ppa:deadsnakes/ppa && \
+    apt update && \
+    apt install -y \
+        python3.10 python3.10-venv python3.10-dev python3-pip \
+        git wget curl build-essential \
+        libgl1-mesa-dev libglib2.0-0 libsm6 libxrender1 \
+        libxext6 libgoogle-perftools4 libtcmalloc-minimal4 \
+        xdg-utils bc aria2 \
+        rustc cargo \
+        ninja-build && \
     rm -rf /var/lib/apt/lists/* && \
-    groupadd -g 1000 sdgroup && \
-    useradd -m -s /bin/bash -u 1000 -g 1000 --home /app sduser && \
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1 && \
     ln -s /app /home/sduser && \
-    chown -R sduser:sdgroup /app && \
     chmod +x /app/entrypoint.sh
 
-USER sduser
+RUN chown -R 1000:1000 /app
+USER 1000
+
 WORKDIR /app
 
-RUN git clone -b master https://github.com/AUTOMATIC1111/stable-diffusion-webui.git stable-diffusion-webui && \
+# Clone the repo and install PyTorch with CUDA 12.8 support
+RUN git clone https://github.com/AUTOMATIC1111/stable-diffusion-webui.git stable-diffusion-webui && \
     cd stable-diffusion-webui && \
-    ./webui.sh -h
+    python3 -m venv venv && \
+    ./venv/bin/pip3 install --upgrade pip wheel setuptools && \
+    # Install PyTorch nightly with RTX 5090 sm_120 support
+    ./venv/bin/pip3 install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128 && \
+    # Install xFormers
+    ./venv/bin/pip3 install -U xformers --index-url https://download.pytorch.org/whl/cu128 && \
+    chmod +x webui.sh
 
 WORKDIR /app/stable-diffusion-webui
+
+# Volumes for data and models
 VOLUME /app/stable-diffusion-webui/extensions
 VOLUME /app/stable-diffusion-webui/textual_inversion_templates
 VOLUME /app/stable-diffusion-webui/embeddings
@@ -29,14 +50,21 @@ VOLUME /app/stable-diffusion-webui/localizations
 
 EXPOSE 8080
 
-ENV LD_PRELOAD=/usr/local/cuda-12.1/targets/x86_64-linux/lib/libcusparse.so.12
+# CUDA / PyTorch environment tweaks - RTX 5090 has compute capability 12.0 (sm_120)
+ENV TORCH_CUDA_ARCH_LIST="8.6;8.9;9.0;12.0"
+ENV CUDA_LAUNCH_BLOCKING=1
+ENV TORCH_USE_CUDA_DSA=1
+ENV CUDA_VISIBLE_DEVICES=0
 ENV PYTORCH_CUDA_ALLOC_CONF=garbage_collection_threshold:0.9,max_split_size_mb:512
 
 ENTRYPOINT ["/app/entrypoint.sh", "--update-check", "--xformers", "--listen", "--port", "8080"]
 
+FROM minimal AS full
 
-FROM minimal as full
+# Copy the entire /app directory from the minimal stage
+COPY --from=minimal /app /app
 
+# Pre-install all dependencies, skip downloading SD model
 RUN cd /app/stable-diffusion-webui && \
     touch install.log && \
     timeout 2h bash -c "./webui.sh --skip-torch-cuda-test --no-download-sd-model --exit"
