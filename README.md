@@ -1,5 +1,9 @@
-# Stable Diffusion web UI
+# Stable Diffusion Web UI - NVIDIA 50XX Series
 A browser interface based on Gradio library for Stable Diffusion.
+
+## NOTE:
+
+This is a modified version of the `universonic/docker-stable-diffusion-webui` image support for CUDA 12.8.1.
 
 ## Usage
 
