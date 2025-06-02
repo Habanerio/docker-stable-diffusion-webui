@@ -1,6 +1,10 @@
 # Stable Diffusion web UI
 A browser interface based on Gradio library for Stable Diffusion.
 
+## NOTE:
+
+This is a modified version of the `universonic/docker-stable-diffusion-webui` image support for CUDAh 12.8.1.
+
 ## Usage
 
 Basic example:
