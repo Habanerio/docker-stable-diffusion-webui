@@ -1,4 +1,4 @@
-# Stable Diffusion web UI
+# Stable Diffusion Web UI - NVIDIA 50XX Series
 A browser interface based on Gradio library for Stable Diffusion.
 
 ## NOTE:
